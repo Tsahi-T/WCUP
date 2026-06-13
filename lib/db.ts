@@ -1,73 +1,74 @@
-import { Redis } from "@upstash/redis";
+import Redis from "ioredis";
 import fs from "fs";
 import path from "path";
 import os from "os";
 
 // ===== שכבת אחסון =====
-// בפרודקשן (Vercel): Upstash Redis — נתונים משותפים בין כל המכשירים.
-// ללא Redis: קובץ JSON זמני, כדי שהכל יעבוד מיד (לא משותף בין מכשירים/מופעים).
+// בפרודקשן (Vercel): Redis (Upstash) דרך משתנה החיבור REDIS_URL — משותף בין כל המכשירים.
+// ללא Redis: קובץ JSON זמני + גיבוי בזיכרון, כדי שהכל יעבוד מיד.
 
 const STATE_KEY = "mondial:state:v1";
 
-// איתור פרטי ההתחברות ל-Redis בכל שם משתנה אפשרי (Vercel/Upstash מזריקים
-// לעיתים עם תחילית כמו STORAGE_ או KV_). מחפשים מפתח URL ואז את ה-TOKEN התואם.
-function findCreds(): { url: string; token: string; key: string } | null {
+// איתור כתובת החיבור ל-Redis בכל שם משתנה אפשרי (REDIS_URL / KV_URL / וכו').
+function findUrl(): { url: string; key: string } | null {
   const env = process.env as Record<string, string>;
-  // עדיפות לשמות הסטנדרטיים
-  const direct: [string, string][] = [
-    ["KV_REST_API_URL", "KV_REST_API_TOKEN"],
-    ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN"],
-  ];
-  for (const [u, t] of direct) {
-    if (env[u] && env[t]) return { url: env[u], token: env[t], key: u };
+  const preferred = ["REDIS_URL", "KV_URL", "UPSTASH_REDIS_URL"];
+  for (const k of preferred) {
+    if (env[k] && /^rediss?:\/\//.test(env[k])) return { url: env[k], key: k };
   }
-  // סריקה גנרית: כל מפתח שמסתיים ב-REST_API_URL או REDIS_REST_URL
-  const urlKey = Object.keys(env).find(
-    (k) => /(REST_API_URL|REDIS_REST_URL)$/.test(k) && /^https?:\/\//.test(env[k] || "")
-  );
-  if (urlKey) {
-    const tokenKey = urlKey.replace(/URL$/, "TOKEN");
-    if (env[tokenKey]) return { url: env[urlKey], token: env[tokenKey], key: urlKey };
-  }
-  return null;
+  const k = Object.keys(env).find((k) => /^rediss?:\/\//.test(env[k] || ""));
+  return k ? { url: env[k], key: k } : null;
 }
 
-const creds = findCreds();
-const redis = creds ? new Redis({ url: creds.url, token: creds.token }) : null;
+const found = findUrl();
 
-// חיווי אבחון: אילו מפתחות אחסון נראו בסביבה (שמות בלבד, ללא ערכים/סודות)
+// יצירת לקוח יחיד (נשמר בין הפעלות "חמות" בענן)
+let client: Redis | null = null;
+if (found) {
+  try {
+    client = new Redis(found.url, {
+      maxRetriesPerRequest: 3,
+      lazyConnect: false,
+      enableReadyCheck: false,
+    });
+    client.on("error", () => {}); // לא להפיל את התהליך על ניתוק זמני
+  } catch {
+    client = null;
+  }
+}
+
+// חיווי אבחון: שמות מפתחות אחסון בלבד (ללא ערכים/סודות)
 export const storageInfo = {
-  connected: !!redis,
-  matchedKey: creds?.key || null,
+  connected: !!client,
+  matchedKey: found?.key || null,
   storageKeysSeen: Object.keys(process.env).filter((k) =>
     /(REDIS|UPSTASH|KV_|STORAGE)/i.test(k)
   ),
 };
 
-// בפיתוח מקומי נשמור בתיקיית הפרויקט; בענן (מערכת קבצים לקריאה בלבד) ב-tmp.
+// קובץ מקומי לפיתוח; בענן (מערכת קבצים לקריאה בלבד) ב-tmp.
 const LOCAL_FILE = process.env.VERCEL
   ? path.join(os.tmpdir(), "mondial-state.json")
   : path.join(process.cwd(), ".mondial-state.json");
 
-// גיבוי בזיכרון אם גם הכתיבה לקובץ נכשלת
 let memoryState: any = null;
 
 export async function readRaw(): Promise<any | null> {
-  if (redis) {
-    return (await redis.get(STATE_KEY)) as any;
+  if (client) {
+    const v = await client.get(STATE_KEY);
+    return v ? JSON.parse(v) : null;
   }
   if (memoryState !== null) return memoryState;
   try {
-    const txt = fs.readFileSync(LOCAL_FILE, "utf-8");
-    return JSON.parse(txt);
+    return JSON.parse(fs.readFileSync(LOCAL_FILE, "utf-8"));
   } catch {
     return null;
   }
 }
 
 export async function writeRaw(value: any): Promise<void> {
-  if (redis) {
-    await redis.set(STATE_KEY, value);
+  if (client) {
+    await client.set(STATE_KEY, JSON.stringify(value));
     return;
   }
   memoryState = value;
@@ -78,4 +79,4 @@ export async function writeRaw(value: any): Promise<void> {
   }
 }
 
-export const usingRedis = !!redis;
+export const usingRedis = !!client;
