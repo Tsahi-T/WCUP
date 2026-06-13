@@ -21,11 +21,13 @@ npm run dev
 פתחו http://localhost:3000 — עובד מיד עם אחסון מקומי בקובץ (`.mondial-state.json`).
 
 ## פריסה ל-Vercel (רב-מכשירי)
-1. דחפו את הפרויקט ל-GitHub וייבאו אותו ב-[vercel.com](https://vercel.com).
-2. ב-Vercel: **Storage → Create Database → Upstash (Redis)**, ושייכו לפרויקט. Vercel יזריק אוטומטית את `KV_REST_API_URL` ו-`KV_REST_API_TOKEN`.
-3. Deploy. מעכשיו כל ילד נכנס מהטלפון שלו ורואה בזמן אמת את הניחושים של כולם.
+1. דחפו את הפרויקט ל-GitHub וייבאו אותו ב-[vercel.com](https://vercel.com). Framework מזוהה אוטומטית כ-Next.js (מאולץ דרך `vercel.json`).
+2. ב-Vercel: **Storage → Create Database → Upstash (Redis)**, ושייכו לפרויקט. האינטגרציה מזריקה אוטומטית את `REDIS_URL`.
+3. **Redeploy** (Deployments → ⋯ → Redeploy) כדי שהמשתנה ייקלט.
+4. מעכשיו כל ילד נכנס מהטלפון שלו ורואה בזמן אמת את הניחושים של כולם.
 
-> בלי בסיס נתונים האפליקציה עדיין רצה, אבל הנתונים נשמרים מקומית לכל סביבה בנפרד — לכן ל-multi-device חובה Upstash.
+> אבחון: פתחו `/api/state` — אם רואים `"connected":true` המסד המשותף פעיל.
+> בלי המסד האפליקציה עדיין רצה, אבל הנתונים אינם משותפים בין מכשירים.
 
 ## להוסיף תוכן
 - מדינות ושאלות: ערכו את המערכים `COUNTRIES` ו-`TRIVIA` בקובץ [`lib/data.ts`](lib/data.ts).
