@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getState, predictionPoints } from "@/lib/store";
-import { usingRedis } from "@/lib/db";
+import { usingRedis, storageInfo } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -27,5 +27,5 @@ export async function GET() {
     total: u.score + (predictionScore[u.id] || 0),
   }));
 
-  return NextResponse.json({ users, matches: s.matches, guesses: s.guesses, shared: usingRedis });
+  return NextResponse.json({ users, matches: s.matches, guesses: s.guesses, shared: usingRedis, storage: storageInfo });
 }
