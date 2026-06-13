@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { COUNTRIES, CONTINENTS, type Country } from "@/lib/data";
 import Confetti from "./Confetti";
+import { BackTitle } from "./FlagsQuiz";
 
 const ROUND = 6;
 const OPT = "אבגד";
@@ -32,7 +33,7 @@ function buildRound(): Q[] {
   });
 }
 
-export default function GeoQuiz({ onScore }: { onScore: (pts: number) => void }) {
+export default function GeoQuiz({ onScore, onHome }: { onScore: (pts: number) => void; onHome: () => void }) {
   const [qs, setQs] = useState<Q[]>(() => buildRound());
   const [i, setI] = useState(0);
   const [pickedCap, setPickedCap] = useState<number | null>(null);
@@ -69,9 +70,12 @@ export default function GeoQuiz({ onScore }: { onScore: (pts: number) => void })
       <div className="glass pad result-card slide-up">
         <div style={{ fontSize: 60 }}>{score >= ROUND - 1 ? "🏆" : score >= ROUND / 2 ? "🎉" : "💪"}</div>
         <h2>סיימת את הסיבוב!</h2>
-        <div className="score-big">{score}/{ROUND}</div>
-        <p className="note">צברת {score} נקודות לטבלת האלופים</p>
-        <button className="btn full" onClick={restart}>סיבוב נוסף 🔁</button>
+        <div className="score-big">{score} 🪙</div>
+        <p className="note">צברת {score} מטבעות מתוך {ROUND}</p>
+        <div className="grid2">
+          <button className="btn" onClick={restart}>סיבוב נוסף 🔁</button>
+          <button className="btn ghost" onClick={onHome}>לדף הבית 🏠</button>
+        </div>
       </div>
     );
   }
@@ -79,10 +83,7 @@ export default function GeoQuiz({ onScore }: { onScore: (pts: number) => void })
   return (
     <div>
       <Confetti fire={confetti} />
-      <div className="screen-title">
-        <span className="ico">🗺️</span>
-        <div><h2>גאוגרפיה ומפות</h2><p>בירות ויבשות מסביב לעולם</p></div>
-      </div>
+      <BackTitle onHome={onHome} ico="🗺️" title="גאוגרפיה ומפות" sub="בירות ויבשות מסביב לעולם" />
       <div className="progress"><i style={{ width: `${(i / ROUND) * 100}%` }} /></div>
 
       <div className="glass pad slide-up" key={i}>

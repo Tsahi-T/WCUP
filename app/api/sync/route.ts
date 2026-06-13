@@ -34,9 +34,16 @@ const EN: Record<string, string> = {
 
 const KEY = process.env.SPORTSDB_KEY || "3"; // מפתח בדיקה ציבורי חינמי
 
-// שליפת תוצאות אמיתיות אוטומטית. גיבוי: הזנה ידנית בלשונית ההורים.
-export async function POST() {
+// שליפת תוצאות אמיתיות אוטומטית (מנהל בלבד).
+export async function POST(req: Request) {
   const s = await getState();
+  let body: any = {};
+  try { body = await req.json(); } catch {}
+  const u = s.users.find((x) => x.id === body.userId);
+  if (!u || u.password !== String(body.password)) {
+    return NextResponse.json({ ok: false, error: "אימות נכשל" }, { status: 401 });
+  }
+  if (!u.admin) return NextResponse.json({ ok: false, error: "פעולה למנהל בלבד" }, { status: 403 });
   let updated = 0;
   const errors: string[] = [];
 
@@ -78,8 +85,4 @@ export async function POST() {
 
   if (updated > 0) await saveState(s);
   return NextResponse.json({ ok: true, updated, errors });
-}
-
-export async function GET() {
-  return POST();
 }

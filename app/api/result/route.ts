@@ -11,6 +11,7 @@ export async function POST(req: Request) {
   if (!u || u.password !== String(password)) {
     return NextResponse.json({ ok: false, error: "אימות נכשל" }, { status: 401 });
   }
+  if (!u.admin) return NextResponse.json({ ok: false, error: "פעולה למנהל בלבד" }, { status: 403 });
   const m = s.matches.find((x) => x.id === matchId);
   if (!m) return NextResponse.json({ ok: false, error: "משחק לא נמצא" }, { status: 404 });
 

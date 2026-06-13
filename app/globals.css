@@ -286,6 +286,64 @@ label { display: block; font-size: 13px; font-weight: 700; color: var(--muted); 
 @keyframes slideUp { from { transform: translateY(16px); opacity: 0 } to { transform: translateY(0); opacity: 1 } }
 .slide-up { animation: slideUp .35s ease both; }
 
+/* ===== כפתור חזרה ===== */
+.back-btn {
+  flex: none; width: 38px; height: 38px; border-radius: 12px; cursor: pointer;
+  border: 1px solid var(--stroke); background: rgba(255,255,255,.08); color: var(--text);
+  font-size: 22px; font-weight: 900; display: grid; place-items: center; transition: transform .1s, background .15s;
+}
+.back-btn:active { transform: scale(.9); }
+.back-btn:hover { background: rgba(255,255,255,.16); }
+
+/* עיגול הוספת שחקן */
+.add-avatar { font-size: 34px; font-weight: 900; color: var(--gold); background: rgba(255,210,74,.12) !important; border-style: dashed !important; }
+
+/* כותרת יום בלוח המשחקים */
+.day-head {
+  font-family: var(--font-display); font-weight: 800; font-size: 14px; color: var(--gold);
+  margin: 6px 4px 10px; padding-bottom: 6px; border-bottom: 1px solid var(--stroke);
+}
+
+/* ===== דף הבית ===== */
+.home-hero { display: flex; align-items: center; gap: 14px; }
+.home-hi { font-family: var(--font-display); font-weight: 800; font-size: 20px; }
+.home-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+.home-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.home-card {
+  cursor: pointer; border: 1px solid var(--stroke); border-radius: 20px; padding: 18px 14px;
+  text-align: right; display: grid; gap: 4px; color: var(--text); position: relative; overflow: hidden;
+  box-shadow: 0 14px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.2);
+  transition: transform .12s, box-shadow .12s; min-height: 120px;
+}
+.home-card:active { transform: translateY(4px) scale(.99); }
+.home-card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(140deg, rgba(255,255,255,.18), transparent 45%); pointer-events: none; }
+.hc-ico { font-size: 38px; line-height: 1; filter: drop-shadow(0 6px 8px rgba(0,0,0,.35)); }
+.hc-title { font-family: var(--font-display); font-weight: 800; font-size: 17px; }
+.hc-sub { font-size: 12px; color: rgba(255,255,255,.85); }
+.c-sky    { background: linear-gradient(150deg, #2a6fd6, #1b3f8f); }
+.c-red    { background: linear-gradient(150deg, #e0556b, #9c2740); }
+.c-green  { background: linear-gradient(150deg, #1ea968, #0c6b40); }
+.c-purple { background: linear-gradient(150deg, #7a3fd0, #46228f); }
+.c-gold   { background: linear-gradient(150deg, #e7a93b, #b06f15); color: #2b1c04; }
+.c-gold .hc-sub { color: rgba(43,28,4,.8); }
+.c-admin  { background: linear-gradient(150deg, #455376, #2a3450); }
+
+/* ===== טיימר ===== */
+.timer { background: rgba(0,0,0,.28); border: 1px solid var(--stroke); border-radius: 14px; padding: 10px 14px; }
+.timer-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.timer-label { font-size: 12px; font-weight: 700; color: var(--muted); }
+.timer-num { font-family: var(--font-display); font-weight: 900; font-size: 24px; color: var(--gold); }
+.timer-bar { height: 10px; border-radius: 999px; background: rgba(0,0,0,.35); overflow: hidden; box-shadow: inset 0 0 0 1px var(--stroke); }
+.timer-bar > i { display: block; height: 100%; background: linear-gradient(90deg, var(--grass), var(--sky)); transition: width 1s linear; }
+.timer.low .timer-num { color: #ff8a8a; }
+.timer.low .timer-bar > i { background: linear-gradient(90deg, var(--red), #ff9a4a); transition: width 1s linear; }
+
+/* תוצאת ניחוש מול תוצאה אמיתית */
+.predictor.exact { box-shadow: inset 0 0 0 1.5px var(--gold); }
+.predictor.ok { box-shadow: inset 0 0 0 1.5px var(--grass); }
+.predictor.miss { opacity: .6; }
+
 /* קונפטי */
 .confetti { position: fixed; inset: 0; pointer-events: none; z-index: 50; overflow: hidden; }
 .confetti i {

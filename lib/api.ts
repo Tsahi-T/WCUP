@@ -5,6 +5,7 @@ export type PublicUser = {
   name: string;
   avatar: string;
   hasPassword: boolean;
+  admin: boolean;
   quizScore: number;
   predictionScore: number;
   total: number;
@@ -31,7 +32,7 @@ export type FullState = {
   guesses: Record<string, Record<string, Guess>>;
 };
 
-export type Session = { id: string; name: string; avatar: string; password: string };
+export type Session = { id: string; name: string; avatar: string; password: string; admin?: boolean };
 
 const SKEY = "mondial.session";
 
@@ -60,9 +61,22 @@ export async function getState(): Promise<FullState> {
   return res.json();
 }
 
+async function del(url: string, body: any) {
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.ok === false) throw new Error(data.error || "שגיאה");
+  return data;
+}
+
 export const api = {
   login: (userId: string, password: string, newName?: string) =>
     post("/api/login", { userId, password, newName }),
+  register: (name: string, password: string, avatar: string) =>
+    post("/api/register", { name, password, avatar }),
   guess: (s: Session, matchId: string, scoreA: number, scoreB: number) =>
     post("/api/guess", { userId: s.id, password: s.password, matchId, scoreA, scoreB }),
   result: (s: Session, matchId: string, scoreA: number, scoreB: number) =>
@@ -73,5 +87,9 @@ export const api = {
     post("/api/avatar", { userId: s.id, password: s.password, avatar }),
   addMatch: (s: Session, teamA: string, teamB: string, date: string, stage: string) =>
     post("/api/match", { userId: s.id, password: s.password, teamA, teamB, date, stage }),
-  sync: () => post("/api/sync", {}),
+  deleteMatch: (s: Session, matchId: string) =>
+    del("/api/match", { userId: s.id, password: s.password, matchId }),
+  deleteUser: (s: Session, targetId: string) =>
+    del("/api/users", { userId: s.id, password: s.password, targetId }),
+  sync: (s: Session) => post("/api/sync", { userId: s.id, password: s.password }),
 };

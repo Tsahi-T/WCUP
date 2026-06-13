@@ -2,7 +2,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Avatar from "@/components/Avatar";
 import Login from "@/components/Login";
-import Predictions from "@/components/Predictions";
+import Home from "@/components/Home";
+import Schedule from "@/components/Schedule";
 import FlagsQuiz from "@/components/FlagsQuiz";
 import GeoQuiz from "@/components/GeoQuiz";
 import TriviaQuiz from "@/components/TriviaQuiz";
@@ -10,21 +11,12 @@ import Leaderboard from "@/components/Leaderboard";
 import Manage from "@/components/Manage";
 import { api, getState, loadSession, saveSession, type FullState, type Session } from "@/lib/api";
 
-type Tab = "predict" | "flags" | "geo" | "trivia" | "board" | "more";
+type Tab = "home" | "schedule" | "flags" | "geo" | "trivia" | "board" | "manage";
 
-const TABS: { id: Tab; ico: string; label: string }[] = [
-  { id: "predict", ico: "🔮", label: "ניחושים" },
-  { id: "flags", ico: "🚩", label: "דגלים" },
-  { id: "geo", ico: "🗺️", label: "גאוגרפיה" },
-  { id: "trivia", ico: "🧠", label: "הידעת" },
-  { id: "board", ico: "🏆", label: "טבלה" },
-  { id: "more", ico: "⚙️", label: "עוד" },
-];
-
-export default function Home() {
+export default function Home_Page() {
   const [state, setState] = useState<FullState | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [tab, setTab] = useState<Tab>("predict");
+  const [tab, setTab] = useState<Tab>("home");
   const [ready, setReady] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -37,8 +29,12 @@ export default function Home() {
     (async () => {
       const s = await refresh();
       const sess = loadSession();
-      // ודא שהמשתמש השמור עדיין קיים
-      if (sess && s.users.some((u) => u.id === sess.id)) setSession(sess);
+      if (sess && s.users.some((u) => u.id === sess.id)) {
+        // סנכרון הרשאת מנהל מהשרת
+        const fresh = s.users.find((u) => u.id === sess.id)!;
+        const merged = { ...sess, admin: fresh.admin };
+        setSession(merged); saveSession(merged);
+      }
       setReady(true);
     })();
   }, [refresh]);
@@ -50,53 +46,56 @@ export default function Home() {
     try { await api.score(session, points); } catch {}
     refresh();
   }
-
-  function logout() { saveSession(null); setSession(null); setTab("predict"); }
-
+  function logout() { saveSession(null); setSession(null); setTab("home"); }
   function setAvatar(a: string) {
     if (!session) return;
     const next = { ...session, avatar: a };
     setSession(next); saveSession(next);
   }
+  const goHome = () => setTab("home");
 
   if (!ready) {
     return <div className="app center" style={{ marginTop: "40vh" }}><div className="big-cup" style={{ fontSize: 54 }}>🏆</div></div>;
   }
-
   if (!state || !session || !me) {
-    return <Login users={state?.users || []} onLogin={(s) => { setSession(s); refresh(); }} />;
+    return <Login users={state?.users || []} onLogin={(s) => { setSession(s); setTab("home"); refresh(); }} />;
   }
+
+  const navTabs: { id: Tab; ico: string; label: string }[] = [
+    { id: "home", ico: "🏠", label: "בית" },
+    { id: "schedule", ico: "📅", label: "לוח" },
+    { id: "board", ico: "🏆", label: "טבלה" },
+    { id: "manage", ico: session.admin ? "🛠️" : "⚙️", label: session.admin ? "ניהול" : "פרופיל" },
+  ];
 
   return (
     <div className="app">
       <div className="topbar">
-        <div className="brand">
+        <div className="brand" onClick={goHome} style={{ cursor: "pointer" }}>
           <span className="cup">🏆</span>
-          <div>
-            <h1>מונדיאל 2026</h1>
-            <small>משחק המשפחה</small>
-          </div>
+          <div><h1>מונדיאל 2026</h1><small>משחק המשפחה</small></div>
         </div>
-        <div className="me" onClick={() => setTab("more")} style={{ cursor: "pointer" }}>
+        <div className="me" onClick={() => setTab("manage")} style={{ cursor: "pointer" }}>
           <div style={{ textAlign: "left" }}>
-            <div className="name">{me.name}</div>
-            <div className="pts">⭐ {me.total} נק׳</div>
+            <div className="name">{me.name}{session.admin ? " 👑" : ""}</div>
+            <div className="pts">🪙 {me.total} מטבעות</div>
           </div>
           <Avatar src={session.avatar} size={44} ring />
         </div>
       </div>
 
-      {tab === "predict" && <Predictions state={state} session={session} onChanged={refresh} />}
-      {tab === "flags" && <FlagsQuiz onScore={addScore} />}
-      {tab === "geo" && <GeoQuiz onScore={addScore} />}
-      {tab === "trivia" && <TriviaQuiz onScore={addScore} />}
-      {tab === "board" && <Leaderboard state={state} meId={me.id} />}
-      {tab === "more" && (
-        <Manage state={state} session={session} onChanged={refresh} onLogout={logout} onAvatar={setAvatar} />
+      {tab === "home" && <Home state={state} session={session} onNav={(t) => setTab(t as Tab)} />}
+      {tab === "schedule" && <Schedule state={state} session={session} onChanged={refresh} />}
+      {tab === "flags" && <FlagsQuiz onScore={addScore} onHome={goHome} />}
+      {tab === "geo" && <GeoQuiz onScore={addScore} onHome={goHome} />}
+      {tab === "trivia" && <TriviaQuiz onScore={addScore} onHome={goHome} />}
+      {tab === "board" && <Leaderboard state={state} meId={me.id} onHome={goHome} />}
+      {tab === "manage" && (
+        <Manage state={state} session={session} onChanged={refresh} onLogout={logout} onAvatar={setAvatar} onHome={goHome} />
       )}
 
       <nav className="tabbar">
-        {TABS.map((t) => (
+        {navTabs.map((t) => (
           <button key={t.id} className={`tab ${tab === t.id ? "active" : ""}`} onClick={() => setTab(t.id)}>
             <span className="ti">{t.ico}</span>
             <span>{t.label}</span>

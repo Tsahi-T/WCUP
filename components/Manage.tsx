@@ -1,12 +1,11 @@
 "use client";
 import { useRef, useState } from "react";
 import Avatar from "./Avatar";
-import { api, saveSession, type FullState, type Session } from "@/lib/api";
+import { api, type FullState, type Session } from "@/lib/api";
 import { COUNTRIES } from "@/lib/data";
 
 const EMOJIS = ["⚽", "🦁", "🐯", "🦅", "🐉", "🦊", "🐼", "🦄", "🔥", "⭐", "🚀", "👑", "😎", "🤩", "🐶", "🐱"];
 
-// כיווץ תמונה ל-dataURL קטן
 function fileToAvatar(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -30,39 +29,49 @@ function fileToAvatar(file: File): Promise<string> {
 }
 
 export default function Manage({
-  state, session, onChanged, onLogout, onAvatar,
+  state, session, onChanged, onLogout, onAvatar, onHome,
 }: {
   state: FullState; session: Session; onChanged: () => void;
-  onLogout: () => void; onAvatar: (a: string) => void;
+  onLogout: () => void; onAvatar: (a: string) => void; onHome: () => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const isAdmin = !!session.admin;
 
   async function setAvatar(av: string) {
     try { await api.avatar(session, av); onAvatar(av); onChanged(); }
     catch (e: any) { alert(e.message); }
   }
-
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0]; if (!f) return;
-    try { const a = await fileToAvatar(f); await setAvatar(a); }
-    catch { alert("לא הצלחתי לטעון את התמונה"); }
+    try { const a = await fileToAvatar(f); await setAvatar(a); } catch { alert("לא הצלחתי לטעון את התמונה"); }
   }
-
   async function doSync() {
     setBusy(true);
     try {
-      const r = await api.sync();
+      const r = await api.sync(session);
       onChanged();
       alert(r.updated ? `עודכנו ${r.updated} תוצאות מהאינטרנט ✓` : "לא נמצאו תוצאות חדשות כרגע. אפשר להזין ידנית למטה.");
     } catch (e: any) { alert("שליפה אוטומטית נכשלה: " + e.message + "\nאפשר להזין ידנית למטה."); }
     finally { setBusy(false); }
   }
+  async function removeMatch(id: string, label: string) {
+    if (!confirm(`למחוק את המשחק ${label}?`)) return;
+    try { await api.deleteMatch(session, id); onChanged(); } catch (e: any) { alert(e.message); }
+  }
+  async function removeUser(id: string, name: string) {
+    if (!confirm(`למחוק את השחקן ${name}? כל הניחושים שלו יימחקו.`)) return;
+    try { await api.deleteUser(session, id); onChanged(); } catch (e: any) { alert(e.message); }
+  }
 
   return (
     <div>
-      {/* ===== פרופיל ===== */}
-      <div className="screen-title"><span className="ico">🙂</span><div><h2>הפרופיל שלי</h2><p>בחרו תמונה או דמות</p></div></div>
+      {/* ===== פרופיל (לכולם) ===== */}
+      <div className="screen-title">
+        <button className="back-btn" onClick={onHome} aria-label="חזרה">→</button>
+        <span className="ico">🙂</span>
+        <div><h2>הפרופיל שלי</h2><p>בחרו תמונה או דמות</p></div>
+      </div>
       <div className="glass pad slide-up" style={{ display: "grid", gap: 14, justifyItems: "center" }}>
         <Avatar src={session.avatar} size={96} ring />
         <div className="grid2" style={{ width: "100%" }}>
@@ -77,24 +86,46 @@ export default function Manage({
         </div>
       </div>
 
-      <div className="spacer" />
+      {!isAdmin && (
+        <>
+          <div className="spacer" />
+          <p className="note center">פעולות ניהול (תוצאות, משחקים ושחקנים) זמינות למנהל בלבד 👑</p>
+        </>
+      )}
 
-      {/* ===== הזנת תוצאות (הורים) ===== */}
-      <div className="screen-title"><span className="ico">🎯</span><div><h2>תוצאות (להורים)</h2><p>שליפה אוטומטית או הזנה ידנית</p></div></div>
-      <div className="glass pad slide-up" style={{ display: "grid", gap: 12 }}>
-        <button className="btn green full" onClick={doSync} disabled={busy}>
-          {busy ? "שולף…" : "🔄 שליפת תוצאות מהאינטרנט"}
-        </button>
-        <p className="note center">השליפה מנסה למשוך תוצאות אמיתיות. אם משחק לא נמצא — הזינו אותו ידנית כאן:</p>
-        {state.matches.map((m) => (
-          <ResultRow key={m.id} m={m} session={session} onChanged={onChanged} />
-        ))}
-      </div>
+      {isAdmin && (
+        <>
+          <div className="spacer" />
+          {/* ===== תוצאות ===== */}
+          <div className="screen-title"><span className="ico">🎯</span><div><h2>תוצאות 👑</h2><p>שליפה אוטומטית או הזנה ידנית</p></div></div>
+          <div className="glass pad slide-up" style={{ display: "grid", gap: 12 }}>
+            <button className="btn green full" onClick={doSync} disabled={busy}>
+              {busy ? "שולף…" : "🔄 שליפת תוצאות מהאינטרנט"}
+            </button>
+            <p className="note center">אם משחק לא נמצא — הזינו ידנית:</p>
+            {state.matches.map((m) => (
+              <ResultRow key={m.id} m={m} session={session} onChanged={onChanged} onDelete={() => removeMatch(m.id, `${m.teamA}–${m.teamB}`)} />
+            ))}
+          </div>
 
-      <div className="spacer" />
+          <div className="spacer" />
+          <AddMatch session={session} onChanged={onChanged} />
 
-      {/* ===== הוספת משחק ===== */}
-      <AddMatch session={session} onChanged={onChanged} />
+          <div className="spacer" />
+          {/* ===== שחקנים ===== */}
+          <div className="screen-title"><span className="ico">👥</span><div><h2>שחקנים 👑</h2><p>{state.users.length} משחקים · עד 20</p></div></div>
+          <div className="glass pad slide-up" style={{ display: "grid", gap: 8 }}>
+            {state.users.map((u) => (
+              <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(0,0,0,.2)", borderRadius: 12, padding: "8px 10px" }}>
+                <Avatar src={u.avatar} size={36} />
+                <span style={{ flex: 1, fontWeight: 700 }}>{u.name}{u.admin ? " 👑" : ""}</span>
+                <span className="note">{u.total} 🪙</span>
+                {!u.admin && <button className="btn ghost sm" onClick={() => removeUser(u.id, u.name)}>🗑️</button>}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
 
       <div className="spacer" />
       <p className="note center">משחק משפחתי לכיף ולמידה · מונדיאל 2026 🏆</p>
@@ -102,7 +133,7 @@ export default function Manage({
   );
 }
 
-function ResultRow({ m, session, onChanged }: { m: any; session: Session; onChanged: () => void }) {
+function ResultRow({ m, session, onChanged, onDelete }: { m: any; session: Session; onChanged: () => void; onDelete: () => void }) {
   const [a, setA] = useState(m.scoreA ?? 0);
   const [b, setB] = useState(m.scoreB ?? 0);
   const [busy, setBusy] = useState(false);
@@ -113,12 +144,13 @@ function ResultRow({ m, session, onChanged }: { m: any; session: Session; onChan
     finally { setBusy(false); }
   }
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto auto", gap: 8, alignItems: "center", background: "rgba(0,0,0,.2)", borderRadius: 12, padding: "8px 10px" }}>
-      <span style={{ fontSize: 13, fontWeight: 700 }}>{m.flagA} {m.teamA} – {m.teamB} {m.flagB}</span>
-      <input style={{ width: 48, textAlign: "center", padding: 8 }} type="number" min={0} value={a} onChange={(e) => setA(Number(e.target.value))} />
+    <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto auto auto", gap: 6, alignItems: "center", background: "rgba(0,0,0,.2)", borderRadius: 12, padding: "8px 10px" }}>
+      <span style={{ fontSize: 12, fontWeight: 700 }}>{m.flagA} {m.teamA} – {m.teamB} {m.flagB}</span>
+      <input style={{ width: 44, textAlign: "center", padding: 8 }} type="number" min={0} value={a} onChange={(e) => setA(Number(e.target.value))} />
       <span style={{ fontWeight: 900 }}>:</span>
-      <input style={{ width: 48, textAlign: "center", padding: 8 }} type="number" min={0} value={b} onChange={(e) => setB(Number(e.target.value))} />
+      <input style={{ width: 44, textAlign: "center", padding: 8 }} type="number" min={0} value={b} onChange={(e) => setB(Number(e.target.value))} />
       <button className="btn sm" onClick={save} disabled={busy}>{m.finished ? "עדכון" : "שמירה"}</button>
+      <button className="btn ghost sm" onClick={onDelete}>🗑️</button>
     </div>
   );
 }
@@ -134,28 +166,24 @@ function AddMatch({ session, onChanged }: { session: Session; onChanged: () => v
     try {
       await api.addMatch(session, teamA, teamB, date ? new Date(date).toISOString() : new Date().toISOString(), "שלב הבתים");
       setDate(""); onChanged();
-    } catch (e: any) { alert(e.message); }
-    finally { setBusy(false); }
+    } catch (e: any) { alert(e.message); } finally { setBusy(false); }
   }
   return (
     <>
-      <div className="screen-title"><span className="ico">➕</span><div><h2>הוספת משחק</h2><p>הוסיפו מפגש חדש לניחושים</p></div></div>
+      <div className="screen-title"><span className="ico">➕</span><div><h2>הוספת משחק 👑</h2><p>הוסיפו מפגש חדש לניחושים</p></div></div>
       <div className="glass pad slide-up" style={{ display: "grid", gap: 10 }}>
         <div className="grid2">
           <div><label>קבוצה א׳</label>
             <select value={teamA} onChange={(e) => setTeamA(e.target.value)}>
               {COUNTRIES.map((c) => <option key={c.name} value={c.name}>{c.flag} {c.name}</option>)}
-            </select>
-          </div>
+            </select></div>
           <div><label>קבוצה ב׳</label>
             <select value={teamB} onChange={(e) => setTeamB(e.target.value)}>
               {COUNTRIES.map((c) => <option key={c.name} value={c.name}>{c.flag} {c.name}</option>)}
-            </select>
-          </div>
+            </select></div>
         </div>
         <div><label>תאריך ושעה (לא חובה)</label>
-          <input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} />
-        </div>
+          <input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} /></div>
         <button className="btn full sm" onClick={add} disabled={busy}>הוספת משחק ⚽</button>
       </div>
     </>

@@ -22,6 +22,7 @@ export async function GET() {
     name: u.name,
     avatar: u.avatar,
     hasPassword: !!u.password,
+    admin: !!u.admin,
     quizScore: u.score,
     predictionScore: predictionScore[u.id] || 0,
     total: u.score + (predictionScore[u.id] || 0),

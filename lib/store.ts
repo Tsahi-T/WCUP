@@ -2,12 +2,15 @@ import { readRaw, writeRaw } from "./db";
 import { SEED_MATCHES, flagOf } from "./data";
 
 // ===== מבני נתונים =====
+export const MAX_USERS = 20;
+
 export type User = {
   id: string;
   name: string;
   password: string;   // משחק משפחתי — נשמר כטקסט פשוט, לא אבטחה אמיתית
   avatar: string;     // נתיב תמונה (/avatars/..) או אמוג'י
   score: number;      // ניקוד כולל ממשחקי הידע
+  admin?: boolean;    // צחי = מנהל שרואה ומנהל הכל
 };
 
 export type Match = {
@@ -37,7 +40,7 @@ export type State = {
 // ===== זרע התחלתי: המשפחה מוזנת מראש =====
 function seedUsers(): User[] {
   return [
-    { id: "tsahy", name: "צחי", password: "", avatar: "/avatars/tsahy.png", score: 0 },
+    { id: "tsahy", name: "צחי", password: "", avatar: "/avatars/tsahy.png", score: 0, admin: true },
     { id: "ori", name: "אורי", password: "", avatar: "/avatars/ori.png", score: 0 },
     { id: "ofek", name: "אופק", password: "", avatar: "/avatars/ofek.png", score: 0 },
   ];
@@ -76,7 +79,17 @@ export async function getState(): Promise<State> {
     if (!ids.has(sm.id)) s.matches.push(sm);
   }
   if (!s.guesses) s.guesses = {};
+  // הבטחת הרשאת מנהל לצחי (גם במצב קיים מהענן)
+  const tsahy = s.users.find((u) => u.id === "tsahy");
+  if (tsahy && !tsahy.admin) tsahy.admin = true;
   return s;
+}
+
+// אימות משתמש מול סיסמה
+export function authUser(s: State, userId: string, password: string): User | null {
+  const u = s.users.find((x) => x.id === userId);
+  if (!u || u.password !== String(password)) return null;
+  return u;
 }
 
 export async function saveState(s: State): Promise<void> {
