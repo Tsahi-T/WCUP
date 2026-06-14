@@ -73,6 +73,15 @@ export async function getState(): Promise<State> {
     await writeRaw(s);
     return s;
   }
+  // מחיקת משחקי placeholder ישנים שהוחלפו במשחקים אמיתיים
+  const STALE_IDS = new Set(["m1","m2","m3","m4","m5","m6","m7","m8"]);
+  const before = s.matches.length;
+  s.matches = s.matches.filter((m) => !STALE_IDS.has(m.id));
+  if (s.matches.length !== before) {
+    // ניקוי ניחושים שהתייחסו למשחקים שנמחקו
+    for (const id of STALE_IDS) delete s.guesses[id];
+  }
+
   // השלמת משחקי זרע חדשים שנוספו לקוד מבלי לדרוס תוצאות קיימות
   const ids = new Set(s.matches.map((m) => m.id));
   for (const sm of seedMatches()) {
@@ -82,6 +91,8 @@ export async function getState(): Promise<State> {
   // הבטחת הרשאת מנהל לצחי (גם במצב קיים מהענן)
   const tsahy = s.users.find((u) => u.id === "tsahy");
   if (tsahy && !tsahy.admin) tsahy.admin = true;
+  // שמירה אם הייתה ניקוי
+  if (s.matches.length !== before) await saveState(s);
   return s;
 }
 
