@@ -6,6 +6,12 @@ import { api, type FullState, type Match, type Session, type PublicUser } from "
 function fmtTime(iso: string) {
   try { return new Date(iso).toLocaleTimeString("he-IL", { hour: "2-digit", minute: "2-digit" }); } catch { return ""; }
 }
+function fmtDateLong(iso: string) {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString("he-IL", { weekday: "long", day: "numeric", month: "long" });
+  } catch { return ""; }
+}
 function dayKey(iso: string) {
   try { return new Date(iso).toLocaleDateString("he-IL", { weekday: "long", day: "2-digit", month: "long" }); } catch { return iso; }
 }
@@ -51,13 +57,19 @@ function MatchCard({ m, users, state, session, onChanged }: {
     return gs === rs ? " ok" : " miss";
   }
 
+  const teamsKnown = m.teamA !== "?" && m.teamB !== "?";
+
   return (
     <div className="glass pad match slide-up">
       <div className="meta">
-        <span className="tag">{m.stage} · {fmtTime(m.date)}</span>
+        <span className="tag">{m.stage}</span>
         {m.finished
           ? <span className="tag done">הסתיים ✓</span>
           : <span className="tag live">פתוח לניחוש</span>}
+      </div>
+      <div className="match-when">
+        <span>📅 {fmtDateLong(m.date)}</span>
+        <span className="match-time">⏰ {fmtTime(m.date)}</span>
       </div>
 
       <div className="teams">
@@ -66,7 +78,7 @@ function MatchCard({ m, users, state, session, onChanged }: {
         <div className="team"><span className="fl">{m.flagB}</span><span className="tn">{m.teamB}</span></div>
       </div>
 
-      {!m.finished && (
+      {!m.finished && teamsKnown && (
         <>
           <div className="guess-row">
             <div className="score-input"><Stepper value={a} onChange={setA} /></div>

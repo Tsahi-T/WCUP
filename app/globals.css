@@ -166,6 +166,8 @@ label { display: block; font-size: 13px; font-weight: 700; color: var(--muted); 
   display: grid; gap: 12px; margin-bottom: 16px;
 }
 .match .meta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--muted); font-weight: 700; }
+.match-when { display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,.06); border-radius: 10px; padding: 6px 12px; font-size: 13px; font-weight: 700; color: var(--text); }
+.match-time { color: var(--gold); font-size: 15px; font-weight: 800; }
 .tag { background: rgba(255,255,255,.1); padding: 4px 10px; border-radius: 999px; font-size: 11px; }
 .tag.live { background: rgba(255,82,82,.2); color: #ff9a9a; }
 .tag.done { background: rgba(37,208,122,.18); color: #8af0bd; }
